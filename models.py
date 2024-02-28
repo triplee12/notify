@@ -19,7 +19,7 @@ class ResourceAddUpdateDelete():
         return orm.session.commit()
 
 
-class NotificationModel:
+class Notification(orm.Model, ResourceAddUpdateDelete):
     """Notification model."""
     id = orm.Column(orm.Integer, primary_key=True)
     message = orm.Column(orm.String(250), unique=True, nullable=False)
