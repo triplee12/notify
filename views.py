@@ -27,7 +27,7 @@ class NotificationResource(Resource):
             notification.displayed_times = notification_dict['display_times']
         if 'displayed_once' in notification_dict and notification_dict['displayed_once'] is not None:
             notification.displayed_once = notification_dict['displayed_once']
-        dumped_notification, dump_errors = notification_schema.dump(message)
+        dumped_notification, dump_errors = notification_schema.dump(notification.message)
         if dump_errors:
             return dump_errors, HttpStatus.bad_request_400.value
         validate_errors = notification_schema.validate(dumped_notification)
