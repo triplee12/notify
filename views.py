@@ -15,7 +15,7 @@ class NotificationResource(Resource):
         notification = Notification.query.get_or_404(id)
         dumped_notification = notification_schema.dump(notification).data
         return dumped_notification
-    
+
     def patch(self, id):
         notification = Notification.query.get_or_404(id)
         notification_dict = request.get_json(force=True)
@@ -40,7 +40,7 @@ class NotificationResource(Resource):
             orm.session.rollback()
             response = {'error': str(err)}
             return response, HttpStatus.bad_request_400.value
-    
+
     def delete(self, id):
         notification = Notification.query.get_or_404(id)
         try:
@@ -51,3 +51,107 @@ class NotificationResource(Resource):
             orm.session.rollback()
             response = {'error': str(err)}
             return response, HttpStatus.unauthorized_401.value
+
+
+class NotificationListResource(Resource):
+    def get(self):
+        notifications = Notification.query.all()
+        dump_result = notification_schema.dump(notifications, many=True)
+        return dump_result
+
+    def post(self):
+        notification_category_dict = request.get_json()
+        if not notification_category_dict:
+            response = {'message': 'No input data provided'}
+            return response, HttpStatus.bad_request_400.value
+        errors = notification_schema.validate(notification_category_dict)
+        if errors:
+            return errors, HttpStatus.bad_request_400.value
+        try:
+            notification_category_name = notification_category_dict['notification_category']['name']
+            notification_category = NotificationCategory.query.filter_by(name=notification_category_name).first()
+            if not notification_category is None:
+                notification_category = NotificationCategory(name=notification_category_name)
+                orm.session.add(notification_category)
+                notification = Notification(
+                    message=notification_category_dict['message'],
+                    ttl=notification_category_dict['ttl'],
+                    notification_category=notification_category
+                )
+                notification.add(notification)
+                query = Notification.query.get(notification.id)
+                dump_result = notification_schema.dump(query).data
+                return dump_result, HttpStatus.created_201.value
+        except SQLAlchemyError as err:
+            orm.session.rollback()
+            response = {"error": str(err)}
+            return response, HttpStatus.bad_request_400.value
+
+
+class NotificationCategoryResource(Resource):
+    def get(self, id):
+        notification_category = NotificationCategory.query.get_or_404(id)
+        dump_result = notification_category_schema.dump(notification_category).data
+        return dump_result
+
+    def patch(self, id):
+        notification_category = NotificationCategory.query.get_or_404(id)
+        notification_category_dict = request.get_json()
+        if not notification_category_dict:
+            response = {"message": "No input data provided"}
+            return response, HttpStatus.bad_request_400.value
+        errors = notification_category_schema.validate(notification_category_dict)
+        if errors:
+            return errors, HttpStatus.bad_request_400.value
+        try:
+            if 'name' in notification_category_dict and not notification_category_dict['name'] is not None:
+                notification_category.name = notification_category_dict['name']
+                notification_category.update()
+                return self.get(id)
+        except SQLAlchemyError as err:
+            orm.session.rollback()
+            response = {'error': str(err)}
+            return response, HttpStatus.bad_request_400.value
+
+    def delete(self, id):
+        notification_category = NotificationCategory.query.get_or_404(id)
+        try:
+            notification_category.delete(notification_category)
+            response = make_response()
+            return response, HttpStatus.no_content_204.value
+        except SQLAlchemyError as err:
+            orm.session.rollback()
+            response = {"error": str(err)}
+            return response, HttpStatus.bad_request_400.value
+
+
+class NotificationCategoryListResource(Resource):
+    def get(self):
+        notification_categories = NotificationCategory.query.all()
+        dump_results = notification_category_schema.dump(notification_categories, many=True)
+        return dump_results
+
+    def post(self):
+        notification_category_dict = request.get_json()
+        if not notification_category_dict:
+            response = {'message': 'No input data provided'}
+            return response, HttpStatus.bad_request_400.value
+        errors = notification_category_schema.validate(notification_category_dict)
+        if errors:
+            return errors, HttpStatus.bad_request_400.value
+        try:
+            notification_category = NotificationCategory(notification_category_dict['name'])
+            notification_category.add(notification_category)
+            query = NotificationCategory.query.get(notification_category.id)
+            dump_result = notification_category_schema.dump(query).data
+            return dump_result, HttpStatus.created_201.value
+        except SQLAlchemyError as err:
+            orm.session.rollback()
+            response = {"error": str(err)}
+            return response, HttpStatus.bad_request_400.value
+
+
+service.add_resource(NotificationCategoryListResource, '/notification_categories/')
+service.add_resource(NotificationCategoryResource, '/notification_categories/<int:id>')
+service.add_resource(NotificationListResource, '/notifications/')
+service.add_resource(NotificationResource, '/notifications/<int:id>')
