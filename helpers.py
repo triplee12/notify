@@ -18,7 +18,7 @@ class PaginationHelper(object):
         # If no page number is specified, we assume the request requires page #1
         page_number = self.request.args.get(self.page_argument_name, 1, type=int)
         paginated_objects = self.query.paginate(
-            page_number=page_number,
+            page=page_number,
             per_page=self.page_size,
             error_out=False
         )
@@ -39,7 +39,7 @@ class PaginationHelper(object):
             )
         else:
             next_page_url = None
-        dumped_objects = self.schema.dump(objects, many=True).data
+        dumped_objects = self.schema.dump(objects, many=True)
         return ({
             self.key_name: dumped_objects,
             'previous': previous_page_url,

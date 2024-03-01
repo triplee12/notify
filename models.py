@@ -1,3 +1,6 @@
+from operator import le
+import re
+from passlib.apps import custom_app_context as password_context
 from marshmallow import Schema, fields, pre_load, validate
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
@@ -19,6 +22,41 @@ class ResourceAddUpdateDelete():
         return orm.session.commit()
 
 
+class User(orm.Model, ResourceAddUpdateDelete):
+    id = orm.Column(orm.Integer, primary_key=True)
+    name = orm.Column(orm.String(50), unique=True, nullable=False)
+    password_hash = orm.Column(orm.String(254), nullable=False)
+    creation_date = orm.Column(orm.TIMESTAMP, server_default=orm.func.current_timestamp(), nullable=False)
+
+    def verify_password(self, password):
+        return password_context.verify(password, self.password_hash)
+
+    def check_password_strength_and_hash(self, password):
+        if len(password) < 8:
+            return 'The password is too short. Please, specify a password with at least 8 characters.', False
+    
+        if len(password) > 32:
+            return 'The password is too long. Please, specify a password with no more than 32 characters.', False
+
+        if re.search(r'[A-Z]', password) is None:
+            return 'The password must include at least one uppercase letter.', False
+
+        if re.search(r'[a-z]', password) is None:
+            return 'The password must include at least one lowercase letter.', False
+
+        if re.search(r'\d', password) is None:
+            return 'The password must contain at least one number.', False
+
+        if re.search(r"[ !#$%&'()*+,-./[\\\]^_`{|}~"+r'"]', password) is None:
+            return 'The password must contain at least one symbol.', False
+
+        self.password_hash = password_context.hash(password)
+        return '', True
+
+    def __init__(self, name):
+        self.name = name
+
+
 class Notification(orm.Model, ResourceAddUpdateDelete):
     """Notification model."""
     id = orm.Column(orm.Integer, primary_key=True)
@@ -35,7 +73,7 @@ class Notification(orm.Model, ResourceAddUpdateDelete):
         self.message = message
         self.ttl = ttl
         self.notification_category = notification_category
-    
+
     @classmethod
     def is_message_unique(cls, id, message):
         existing_notification = cls.query.filter_by(message=message).first()
@@ -65,6 +103,13 @@ class NotificationCategory(orm.Model, ResourceAddUpdateDelete):
                 return True
             else:
                 return False
+
+
+class UserSchema(ma.Schema):
+    id = fields.Integer(dump_only=True)
+    name = fields.String(required=True, validate=validate.Length(3))
+    password = fields.String(required=True, validate=validate.Length(8))
+    url = ma.URLFor('service.userresource', id='<id>', _external=True)
 
 
 class NotificationCategorySchema(ma.Schema):
