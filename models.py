@@ -35,6 +35,17 @@ class Notification(orm.Model, ResourceAddUpdateDelete):
         self.message = message
         self.ttl = ttl
         self.notification_category = notification_category
+    
+    @classmethod
+    def is_message_unique(cls, id, message):
+        existing_notification = cls.query.filter_by(message=message).first()
+        if existing_notification is None:
+            return True
+        else:
+            if existing_notification.id == id:
+                return True
+            else:
+                return False
 
 
 class NotificationCategory(orm.Model, ResourceAddUpdateDelete):
@@ -44,11 +55,22 @@ class NotificationCategory(orm.Model, ResourceAddUpdateDelete):
     def __init__(self, name):
         self.name = name
 
+    @classmethod
+    def is_name_unique(cls, id, name):
+        existing_notification_category = cls.query.filter_by(name=name).first()
+        if existing_notification_category is None:
+            return True
+        else:
+            if existing_notification_category.id == id:
+                return True
+            else:
+                return False
+
 
 class NotificationCategorySchema(ma.Schema):
     id = fields.Integer(dump_only=True)
     name = fields.String(required=True, validate=validate.Length(3))
-    url = ma.URLFor('service.notificationcategoryresource', id='<id>', _external=True)
+    url = ma.URLFor('service.notificationcategoryresource', id=id, _external=True)
     notifications = fields.Nested('NotificationSchema', many=True, exclude=('notification_category',))
 
 
@@ -60,7 +82,7 @@ class NotificationSchema(ma.Schema):
     notification_category = fields.Nested(NotificationCategorySchema, only=['id', 'url', 'name'], required=True)
     displayed_times = fields.Integer()
     displayed_once = fields.Boolean()
-    url = ma.URLFor('service.notificationresource', id='<id>', _external=True)
+    url = ma.URLFor('service.notificationresource', id=id, _external=True)
 
     @pre_load
     def process_notification_category(self, data, many=False, partial=True):
