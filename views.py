@@ -1,11 +1,14 @@
-from  flask import Blueprint, request, jsonify, make_response
+from  flask import Blueprint, request, make_response, g
 from flask_restful import Api, Resource
 from http_status import HttpStatus
-from models import orm, NotificationCategory, NotificationCategorySchema, Notification, NotificationSchema
 from sqlalchemy.exc import SQLAlchemyError
 from flask_httpauth import HTTPBasicAuth
-from flask import g
-from models import User, UserSchema
+from models import (
+    orm, NotificationCategory,
+    NotificationCategorySchema,
+    Notification, NotificationSchema,
+    User, UserSchema
+)
 from helpers import PaginationHelper
 
 service_blueprint = Blueprint('service', __name__)
